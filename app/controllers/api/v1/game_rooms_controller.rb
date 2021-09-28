@@ -1,24 +1,23 @@
 class Api::V1::GameRoomsController < ApplicationController
 
     def index
-        @game_rooms = game_room.all
+        @game_rooms = GameRoom.all
         render json: @game_rooms
     end
-
+    
     def show
-        @game_room = game_room.find(params[:id])
+        @game_room = GameRoom.find(params[:id])
         render json: @game_room
     end
 
     def create
-        @game_room = game_room.new(game_room_params)
-        unless @game_room.save
-            render json: { status: 500 }
-        else
-            render json: {
-                status: :added,
-                game_room: @game_room
-            }
+        @game_room = GameRoom.new(game_room_params)
+        if @game_room.save
+            serialized_data = ActiveModelSerializers::Adapter::Json.new(
+                GameRoomSerializer.new(@game_room) 
+            ).serializable_hash
+            ActionCable.server.broadcast 'game_room_channel', serialized_data
+            head :ok
         end
     end
 

@@ -1,28 +1,29 @@
 class Api::V1::MessagesController < ApplicationController
 
     def index
-        @messages = message.all
+        @messages = Message.all
         render json: @messages
     end
 
     def show
-        @message = message.find(params[:id])
+        @message = Message.find(params[:id])
         render json: @message
     end
 
     def create
-        @message = message.new(message_params)
-        unless @message.save
-            render json: { status: 500 }
-        else
-            render json: {
-                status: :added,
-                message: @message
-            }
+        @message = Message.new(message_params)
+        game_room = GameRoom.find(message_params[:game_room_id])
+        if @message.save
+            serialized_data = ActiveModelSerializers::Adapter::Json.new(
+                MessageSerializer.new(@message)
+            ).serialized_hash
+            MessagesChannel.broadcast_to game_room, serialized_data
+            head :ok
         end
     end
 
     def update
+        @message = Message.find(params[:id])
         if @message.update(message_params)
             render json: {
                 status: :updated,
@@ -34,8 +35,7 @@ class Api::V1::MessagesController < ApplicationController
     end
 
     def destroy
-        
-        @message = message.find(params[:id])
+        @message = Message.find(params[:id])
         @message.destroy
         render json: {}
     end
